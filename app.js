@@ -193,8 +193,31 @@ var uiController = (function () {
         incomeLabel: '.budget__income--value',
         expensesLabel: '.budget__expenses--value',
         percentagesLabel: '.budget__expenses--percentage',
-        container: '.container'
+        container: '.container',
+        expPercLabel: '.item__percentage',
+        dateLabel: '.budget__title--month'
     };
+    var nodeListForEach = function (list, callback) {
+        for (var i = 0; i < list.length; i++) {
+            callback(list[i], i);
+        }
+    };
+    var formatNumber = function (num, type) {
+        var numSplit, int, decimal;
+        num = Math.abs(num);
+        num = num.toFixed(2);
+
+        numSplit = num.split('.');
+        int = numSplit[0];
+        if (int.length > 3) {
+            // int = int.substr(0, 1) + ',' + int.substr(1, 3);
+            int = int.substr(0, int.length - 3) + ',' + int.substr(int.length - 3, 3);
+        }
+        decimal = numSplit[1];
+
+        return (type == 'exp' ? '-' : '+') + ' ' + int + '.' + decimal;
+    };
+
 
     return {
         // BAD PRACTICE to store ui variable names all over the place
@@ -225,7 +248,7 @@ var uiController = (function () {
                 console.log(element);
                 html = '<div class="item clearfix" id=inc-%id%><div \
                 class="item__description">%description%</div><div class="right clearfix"> \
-                <div class="item__value">+ %value%</div><div class="item__delete"> \
+                <div class="item__value">%value%</div><div class="item__delete"> \
                 <button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button> \
                 </div></div></div>';
 
@@ -235,7 +258,7 @@ var uiController = (function () {
                 element = DOMstrings.expenseContainer;
                 html = '<div class="item clearfix" id=exp-%id%> \
                 <div class="item__description">%description%</div> \
-                <div class="right clearfix"> <div class="item__value">- %value%</div> \
+                <div class="right clearfix"> <div class="item__value">%value%</div> \
                 <div class="item__percentage">21%</div>\
                 <div class="item__delete">  <button class="item__delete--btn"> \
                 <i class="ion-ios-close-outline"></i></button> \
@@ -244,7 +267,7 @@ var uiController = (function () {
 
             newHtml = html.replace("%id%", obj.id);
             newHtml = newHtml.replace("%description%", obj.description);
-            newHtml = newHtml.replace("%value%", obj.value);
+            newHtml = newHtml.replace("%value%", formatNumber(obj.value, type));
 
             console.log(newHtml);
 
@@ -259,7 +282,7 @@ var uiController = (function () {
         clearInput: function () {
             fields = document.querySelectorAll(DOMstrings.inputDescription + ',' + DOMstrings.inputValue);
 
-            // convert list to array
+            // convert nodelist to array
             fieldsArr = Array.prototype.slice.call(fields);
 
             fieldsArr.forEach(function (current, index, array) {
@@ -269,17 +292,49 @@ var uiController = (function () {
             fieldsArr[0].focus();
         },
         displayBudget: function (obj) {
-            income = document.querySelector(DOMstrings.incomeLabel).textContent = obj.totalInc;
-            expense = document.querySelector(DOMstrings.expensesLabel).textContent = obj.totalExp;
-            budget = document.querySelector(DOMstrings.budgetLabel).textContent = obj.budget;
+            var type;
+            obj.budget > 0 ? type = 'inc' : type = 'exp';
+
+            income = document.querySelector(DOMstrings.incomeLabel).textContent = formatNumber(obj.totalInc, 'inc');
+            expense = document.querySelector(DOMstrings.expensesLabel).textContent = formatNumber(obj.totalExp, 'exp');
+            budget = document.querySelector(DOMstrings.budgetLabel).textContent = formatNumber(obj.budget, type);
             if (obj.percentage > 0) {
                 percentage = document.querySelector(DOMstrings.percentagesLabel).textContent = obj.percentage + '%';
             }
             else {
                 percentage = document.querySelector(DOMstrings.percentagesLabel).textContent = '---';
             }
-        }
+        },
+        displayPercentages: function () {
+            //node list
+            var fields = document.querySelectorAll(DOMstrings.expPercLabel);
 
+            nodeListForEach(fields, function (current, index) {
+                if (percentages[index] > 0) {
+                    current.textContent = percentages[index] + '%';
+                }
+                else {
+                    current.textContent = '---';
+                }
+            });
+        },
+        displayMonth: function () {
+            var now, month, months, year;
+            var now = new Date();
+            //var christmas = new Date(2019, 11, 25);  dec-->11 (as zero based)
+            months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'June', 'July', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            month = now.getMonth();
+            year = now.getFullYear();
+            document.querySelector(DOMstrings.dateLabel).textContent = months[month] + ' ' + year;
+        },
+        changedType: function () {
+            var fields = document.querySelectorAll(DOMstrings.inputType + ',' + DOMstrings.inputDescription + ',' + DOMstrings.inputValue);
+            nodeListForEach(fields, function (current, index) {
+                // current.classList.add('red-focus');
+                current.classList.toggle('red-focus');
+            });
+            document.querySelector(DOMstrings.inputButton).classList.toggle('red');
+        },
     };
 })();
 
@@ -294,12 +349,12 @@ var dataController = (function (budgetCtrl, UICtrl) {
             // keycode property identifies the key
             if (event.keyCode === 13 || event.which === 13) {
                 console.log('ENTER was pressed');
-                getInput();
                 ctrlAddItem();
             }
 
         });
         document.querySelector(DOM.container).addEventListener('click', ctrlDeleteItem);
+        document.querySelector(DOM.inputType).addEventListener('change', UICtrl.changedType)
 
     }
 
@@ -324,6 +379,7 @@ var dataController = (function (budgetCtrl, UICtrl) {
         percentages = budgetCtrl.getPercentages();
         //3.Update UI with new percentages
         console.log(percentage);
+        UICtrl.displayPercentages();
     }
 
     var ctrlAddItem = function () {
@@ -378,6 +434,7 @@ var dataController = (function (budgetCtrl, UICtrl) {
                 totalExp: 0,
                 percentage: -1
             });
+            UICtrl.displayMonth();
             console.log(setUpEventListeners);
             setUpEventListeners();
 
