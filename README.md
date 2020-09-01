@@ -7,7 +7,7 @@ https://github.com/jonasschmedtmann/complete-javascript-course
 
 The HTML and layout are pre-wriiten.
 
-##What I have learned?
+## What I have learned?
 - Event delegtion in UI clicks
 - MVC pattern implementation in vanilla JS
 - ES5 pattern familiarity
